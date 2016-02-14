@@ -22,7 +22,8 @@ var idx = lunr(function() {
   this.field('body');
 });
 
-var cache = {};
+var cache = {},
+    searchCache = {};
 
 var addCacheItem = function(page) {
   cache[page.dest] = {
@@ -31,6 +32,12 @@ var addCacheItem = function(page) {
     tags: (page.tags || []).join(' '),
     body: ''
   };
+  searchCache[page.dest] = {
+    fullUrl: page.dest,
+    url: page.filename,
+    title: page.title || page.dest,
+    tags: (page.tags || []).join(' ')
+  }
 };
 
 var updateCacheItem = function(page, content) {
@@ -53,7 +60,8 @@ module.exports = function(params, callback) {
 
   var opts = params.assemble.options;
   opts.lunr = opts.lunr || {
-    dataPath: path.join(process.cwd(), 'search_index.json')
+    dataPath: path.join(process.cwd(), 'search_index.json'),
+    searchDataPath: path.join(process.cwd(), 'search_data.json')
   };
 
   // call before each page is rendered to get
@@ -74,6 +82,7 @@ module.exports = function(params, callback) {
     });
 
     fs.writeFileSync(opts.lunr.dataPath, JSON.stringify(idx));
+    fs.writeFileSync(opts.lunr.searchDataPath, JSON.stringify(searchCache));
   };
 
   switch(params.stage) {
