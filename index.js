@@ -17,7 +17,8 @@ var _ = require('lodash');
 
 var idx = lunr(function() {
   this.ref('url');
-  this.field('title', { boost: 10 });
+  this.field('title', { boost: 100 });
+  this.field('description', { boost: 100 });
   this.field('tags', { boost: 100 });
   this.field('body');
 });
@@ -25,24 +26,46 @@ var idx = lunr(function() {
 var cache = {},
     searchCache = {};
 
-var addCacheItem = function(page) {
-  cache[page.dest] = {
-    url: page.dest,
-    title: page.title || page.dest,
-    tags: (page.tags || []).join(' '),
-    body: ''
-  };
-  searchCache[page.dest] = {
-    fullUrl: page.dest,
-    url: page.filename,
-    title: page.title || page.dest,
-    tags: (page.tags || []).join(' ')
-  }
-};
+var addCacheItem = function(page, content) {
+    var $ = cheerio.load(content);
 
-var updateCacheItem = function(page, content) {
-  var $ = cheerio.load(content);
-  cache[page.dest].body = $('body').text();
+    $('.article').each(function(index, article){
+        var metadata = $(article).find('.anchor')
+                                 .contents()
+                                 .filter(function(){
+                                     return this.type == 'comment'
+                                 }),
+            anchor = $(article).find('.anchor').first() ? $(article).find('.anchor').first().attr('id') : '',
+            pageName = anchor ? page.filename + '#' + anchor : page.dest;
+            
+        if($(metadata).toArray().length < 1){
+            metadata = $(article).contents()
+                                 .filter(function(){
+                                     return this.type == 'comment'
+                                 });
+        }
+
+        if($(metadata).toArray().length > 0){
+            var data = $(metadata).toArray()[0].data;
+            cache[pageName] = {
+                url: pageName,
+                title: pageName || page.dest,
+                tags: (page.tags || []).join(' '),
+                body: $(article).text(),
+                breadcrumb: page.data.breadcrumb
+            };
+            _.forEach(data.split('\n'), function(row){
+               if(row && /\w+:/.exec(row)){
+                   var propertyName = /\w+:/.exec(row)[0].replace(':',''),
+                       propertyValue = row.slice(propertyName.length+2)
+                                            .replace('"','')
+                                            .replace('\"','');
+                       
+                   cache[pageName][propertyName] = propertyValue;
+               } 
+            });
+        }
+    });
 };
 
 var options = {
@@ -67,13 +90,12 @@ module.exports = function(params, callback) {
   // call before each page is rendered to get
   // information from the context
   var gatherSearchInformation = function () {
-    addCacheItem(params.context.page);
     params.context.lunr = params.context.lunr || {};
     params.context.lunr.dataPath = params.context.lunr.dataPath || 'search_index.json';
   };
 
   var indexPageContent = function () {
-    updateCacheItem(params.page, params.content);
+    addCacheItem(params.page, params.content);
   };
 
   var generateSearchDataFile = function () {
@@ -82,7 +104,7 @@ module.exports = function(params, callback) {
     });
 
     fs.writeFileSync(opts.lunr.dataPath, JSON.stringify(idx));
-    fs.writeFileSync(opts.lunr.searchDataPath, JSON.stringify(searchCache));
+    fs.writeFileSync(opts.lunr.searchDataPath, JSON.stringify(cache));
   };
 
   switch(params.stage) {
