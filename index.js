@@ -14,6 +14,7 @@ var cheerio = require('cheerio');
 var lunr = require('lunr');
 var _ = require('lodash');
 
+var PAGES_DIR = 'src/templates/pages/';
 
 var idx = lunr(function() {
   this.ref('url');
@@ -52,7 +53,8 @@ var addCacheItem = function(page, content) {
                 title: pageName || page.dest,
                 tags: (page.tags || []).join(' '),
                 body: $(article).text(),
-                breadcrumb: page.data.breadcrumb
+                breadcrumb: page.data.breadcrumb,
+                group: getPageGroup(page.src)
             };
             _.forEach(data.split('\n'), function(row){
                if(row && /\w+:/.exec(row)){
@@ -66,6 +68,11 @@ var addCacheItem = function(page, content) {
             });
         }
     });
+};
+
+  
+var getPageGroup = function(src){
+    return src.substr(src.indexOf(PAGES_DIR) + PAGES_DIR.length).split('/')[0];
 };
 
 var options = {
@@ -95,7 +102,12 @@ module.exports = function(params, callback) {
   };
 
   var indexPageContent = function () {
-    addCacheItem(params.page, params.content);
+      if(params.page.data.search !== false){
+            console.log('Indexing Search');
+            addCacheItem(params.page, params.content);
+      }else{
+          console.log('Not Indexing Search');
+      }
   };
 
   var generateSearchDataFile = function () {
