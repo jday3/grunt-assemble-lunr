@@ -60,9 +60,11 @@ var addCacheItem = function(page, content) {
                if(row && /\w+:/.exec(row)){
                    var propertyName = /\w+:/.exec(row)[0].replace(':',''),
                        propertyValue = row.slice(propertyName.length+2)
+                                            .replace(':', '')
                                             .replace('"','')
-                                            .replace('\"','');
-                       
+                                            .replace('\"','')
+                                            .replace(',', '')
+                                            .trim();
                    cache[pageName][propertyName] = propertyValue;
                } 
             });
