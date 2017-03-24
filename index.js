@@ -18,10 +18,10 @@ var PAGES_DIR = 'src/templates/pages/';
 
 var idx = lunr(function() {
   this.ref('url');
-  this.field('title', { boost: 100 });
-  this.field('description', { boost: 100 });
-  this.field('tags', { boost: 100 });
-  this.field('body');
+  this.field('title', { boost: 2 });
+  this.field('description', { boost: 2 });
+  this.field('tags', { boost: 2 });
+  this.field('body', { boost: 2 });
 });
 
 var cache = {},
